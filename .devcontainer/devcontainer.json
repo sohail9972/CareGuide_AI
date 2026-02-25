@@ -1,0 +1,36 @@
+{
+  "name": "CareGuide AI Development",
+  "image": "mcr.microsoft.com/devcontainers/python:3.11",
+  "features": {
+    "ghcr.io/devcontainers/features/node:latest": {
+      "version": "18"
+    }
+  },
+  "postCreateCommand": "bash -c 'cd backend && pip install -r requirements.txt && python -m spacy download en_core_web_sm && pip install opencv-python && cd ../careguide-frontend && npm install'",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-vscode.makefile-tools",
+        "esbenp.prettier-vscode",
+        "dbaeumer.vscode-eslint"
+      ],
+      "settings": {
+        "python.defaultInterpreterPath": "/usr/local/bin/python",
+        "python.linting.enabled": true,
+        "python.formatting.provider": "black"
+      }
+    }
+  },
+  "forwardPorts": [8000, 3000],
+  "portsAttributes": {
+    "8000": {
+      "label": "Backend API",
+      "onAutoForward": "notify"
+    },
+    "3000": {
+      "label": "Frontend",
+      "onAutoForward": "notify"
+    }
+  }
+}
