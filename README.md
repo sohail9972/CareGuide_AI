@@ -128,6 +128,23 @@ $env:TESSERACT_PATH = "C:\Program Files\Tessract_OCR\tesseract.exe"
 - [ ] Export reports (PDF, CSV)
 - [ ] Mobile app support
 
+## Recent Changes
+
+This project has seen a major update on **March 9, 2026** which included:
+
+- Added comprehensive AWS documentation and setup guides (`AWS_*.md`).
+- Introduced new backend services:
+  - `aws_service.py` for AWS interactions.
+  - `aws_lambda_handler.py` for Lambda deployment.
+  - Updated OCR service and prescription router logic.
+- Included SQLite database placeholder (`careguide.db`) and CloudFormation template (`template.yaml`).
+- Expanded frontend with authentication, dashboard, and diet-plan pages.
+- Added Tailwind configuration for styling.
+- Added various helper scripts for AWS setup and knowledge-base ingestion.
+- Added design and requirement specifications under `specs/`.
+
+These additions bring AWS deployment, improved UI features, and a more structured development workflow.
+
 ## License
 
 MIT License - feel free to use this project for personal or educational purposes.
