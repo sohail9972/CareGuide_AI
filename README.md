@@ -1,5 +1,7 @@
 # CareGuide AI - Prescription OCR & Medicine Detection
 
+> _README last updated: March 9, 2026_
+
 CareGuide AI is an intelligent system that extracts text from prescription images and automatically identifies medicines using OCR and NLP technologies.
 
 ## Features
