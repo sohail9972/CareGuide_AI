@@ -1,0 +1,305 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+
+Description: 'CareGuide AI - Prescription Processing Lambda and related infrastructure'
+
+Parameters:
+  BedrockAgentId:
+    Type: String
+    Description: Bedrock Agent ID for prescription analysis
+    Default: PLACEHOLDER
+
+  BedrockAgentAliasId:
+    Type: String
+    Description: Bedrock Agent Alias ID
+    Default: AIDACKQG5WD3S
+
+  EnvironmentName:
+    Type: String
+    Default: dev
+    AllowedValues:
+      - dev
+      - staging
+      - prod
+    Description: Environment name for resource naming
+
+Globals:
+  Function:
+    Timeout: 120
+    Memory: 512
+    Runtime: python3.11
+    Environment:
+      Variables:
+        BEDROCK_AGENT_ID: !Ref BedrockAgentId
+        BEDROCK_AGENT_ALIAS_ID: !Ref BedrockAgentAliasId
+        OUTPUT_BUCKET: !Ref ResultsBucket
+        RESULTS_TABLE: !Ref ResultsTable
+
+Resources:
+  # S3 Bucket for prescription images
+  PrescriptionsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub 'careguide-prescriptions-${EnvironmentName}-${AWS::AccountId}'
+      VersioningConfiguration:
+        Status: Enabled
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      Tags:
+        - Key: Application
+          Value: CareGuideAI
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+  # S3 Bucket for results
+  ResultsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub 'careguide-results-${EnvironmentName}-${AWS::AccountId}'
+      VersioningConfiguration:
+        Status: Enabled
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      Tags:
+        - Key: Application
+          Value: CareGuideAI
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+  # DynamoDB table for results
+  ResultsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub 'prescription-results-${EnvironmentName}'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: prescriptionId
+          AttributeType: S
+        - AttributeName: timestamp
+          AttributeType: N
+      KeySchema:
+        - AttributeName: prescriptionId
+          KeyType: HASH
+        - AttributeName: timestamp
+          KeyType: RANGE
+      StreamSpecification:
+        StreamViewType: NEW_AND_OLD_IMAGES
+      Tags:
+        - Key: Application
+          Value: CareGuideAI
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+  # IAM Role for Lambda
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub 'careguide-lambda-role-${EnvironmentName}'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: S3Access
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:ListBucket
+                Resource:
+                  - !GetAtt PrescriptionsBucket.Arn
+                  - !Sub '${PrescriptionsBucket.Arn}/*'
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                Resource:
+                  - !GetAtt ResultsBucket.Arn
+                  - !Sub '${ResultsBucket.Arn}/*'
+        - PolicyName: BedrockAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - bedrock:InvokeAgent
+                  - bedrock:InvokeModel
+                Resource: '*'
+        - PolicyName: DynamoDBAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:PutItem
+                  - dynamodb:GetItem
+                  - dynamodb:Query
+                Resource: !GetAtt ResultsTable.Arn
+
+  # Lambda Function
+  PrescriptionProcessorFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub 'careguide-prescription-processor-${EnvironmentName}'
+      CodeUri: ./backend
+      Handler: aws_lambda_handler.lambda_handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Description: Processes prescription images using Bedrock Agent
+      ReservedConcurrentExecutions: 10
+      Layers:
+        - !Ref DependenciesLayer
+      Tags:
+        Application: CareGuideAI
+        Environment: !Ref EnvironmentName
+
+  # Lambda Layer for dependencies
+  DependenciesLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: !Sub 'careguide-dependencies-${EnvironmentName}'
+      Description: Python dependencies for CareGuide Lambda
+      ContentUri: ./lambda-layer
+      CompatibleRuntimes:
+        - python3.11
+      RetentionPolicy: Delete
+
+  # S3 event source for Lambda
+  PrescriptionEventSource:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref PrescriptionProcessorFunction
+      Action: lambda:InvokeFunction
+      Principal: s3.amazonaws.com
+      SourceArn: !GetAtt PrescriptionsBucket.Arn
+      SourceAccount: !Ref AWS::AccountId
+
+  # S3 notification configuration
+  PrescriptionBucketNotification:
+    Type: AWS::S3::Bucket
+    DependsOn:
+      - PrescriptionEventSource
+    Properties:
+      Bucket: !Ref PrescriptionsBucket
+      NotificationConfiguration:
+        LambdaFunctionConfigurations:
+          - Event: s3:ObjectCreated:*
+            Function: !GetAtt PrescriptionProcessorFunction.Arn
+            Filter:
+              Key:
+                FilterRules:
+                  - Name: suffix
+                    Value: .jpg
+                  - Name: suffix
+                    Value: .png
+
+  # CloudWatch Log Group
+  LambdaLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/careguide-prescription-processor-${EnvironmentName}'
+      RetentionInDays: 14
+
+  # CloudWatch Alarm for Lambda errors
+  LambdaErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub 'careguide-lambda-errors-${EnvironmentName}'
+      AlarmDescription: Alert when Lambda function errors occur
+      MetricName: Errors
+      Namespace: AWS/Lambda
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 5
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref PrescriptionProcessorFunction
+
+  # CloudWatch Dashboard
+  MonitoringDashboard:
+    Type: AWS::CloudWatch::Dashboard
+    Properties:
+      DashboardName: !Sub 'careguide-${EnvironmentName}'
+      DashboardBody: !Sub |
+        {
+          "widgets": [
+            {
+              "type": "metric",
+              "properties": {
+                "metrics": [
+                  ["AWS/Lambda", "Invocations", {"stat": "Sum"}],
+                  [".", "Duration", {"stat": "Average"}],
+                  [".", "Errors", {"stat": "Sum"}],
+                  [".", "Throttles", {"stat": "Sum"}]
+                ],
+                "period": 300,
+                "stat": "Average",
+                "region": "${AWS::Region}",
+                "title": "Lambda Performance"
+              }
+            },
+            {
+              "type": "metric",
+              "properties": {
+                "metrics": [
+                  ["AWS/DynamoDB", "ConsumedWriteCapacityUnits", {"stat": "Sum"}],
+                  [".", "ConsumedReadCapacityUnits", {"stat": "Sum"}]
+                ],
+                "period": 300,
+                "stat": "Sum",
+                "region": "${AWS::Region}",
+                "title": "DynamoDB Activity"
+              }
+            }
+          ]
+        }
+
+Outputs:
+  PrescriptionProcessorFunctionArn:
+    Description: ARN of the Lambda function
+    Value: !GetAtt PrescriptionProcessorFunction.Arn
+    Export:
+      Name: !Sub '${EnvironmentName}-PrescriptionProcessorArn'
+
+  PrescriptionsBucketName:
+    Description: Name of the prescriptions S3 bucket
+    Value: !Ref PrescriptionsBucket
+    Export:
+      Name: !Sub '${EnvironmentName}-PrescriptionsBucket'
+
+  ResultsBucketName:
+    Description: Name of the results S3 bucket
+    Value: !Ref ResultsBucket
+    Export:
+      Name: !Sub '${EnvironmentName}-ResultsBucket'
+
+  ResultsTableName:
+    Description: Name of the DynamoDB results table
+    Value: !Ref ResultsTable
+    Export:
+      Name: !Sub '${EnvironmentName}-ResultsTable'
+
+  DeploymentCommand:
+    Description: Command to deploy this stack
+    Value: !Sub |
+      aws cloudformation create-stack \
+        --stack-name careguide-${EnvironmentName} \
+        --template-body file://template.yaml \
+        --parameters \
+          ParameterKey=EnvironmentName,ParameterValue=${EnvironmentName} \
+          ParameterKey=BedrockAgentId,ParameterValue=YOUR_AGENT_ID \
+        --capabilities CAPABILITY_NAMED_IAM \
+        --region ${AWS::Region}

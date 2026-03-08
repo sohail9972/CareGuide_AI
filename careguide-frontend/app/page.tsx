@@ -1,63 +1,48 @@
-import Image from "next/image";
+import Link from "next/link";
 
 export default function Home() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+    <div className="min-h-screen bg-background-light dark:bg-background-dark font-display">
+      <header className="flex items-center justify-between whitespace-nowrap border-b border-solid border-slate-200 dark:border-slate-800 px-4 sm:px-6 md:px-10 py-4 bg-white dark:bg-slate-900">
+        <div className="flex items-center gap-4 text-primary">
+          <span className="material-symbols-outlined text-2xl sm:text-3xl">medical_services</span>
+          <h2 className="text-slate-900 dark:text-slate-100 text-lg sm:text-xl font-bold leading-tight tracking-[-0.015em]">CareGuide AI</h2>
+        </div>
+      </header>
+      <main className="container mx-auto px-4 sm:px-6 py-8 sm:py-12">
+        <div className="text-center mb-8 sm:mb-12">
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-slate-900 dark:text-slate-100 mb-4">Welcome to CareGuide AI</h1>
+          <p className="text-base sm:text-lg text-slate-600 dark:text-slate-400 max-w-2xl mx-auto px-4">
+            AI-powered healthcare platform for personalized medical assistance, prescription management, and health tracking.
           </p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 max-w-6xl mx-auto px-4">
+          <Link href="/auth/login" className="bg-white dark:bg-slate-800 rounded-xl p-4 sm:p-6 shadow-sm border border-slate-100 dark:border-slate-700 hover:shadow-md transition-shadow min-h-[120px] sm:min-h-[140px]">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-primary/10 text-primary flex items-center justify-center mb-4">
+              <span className="material-symbols-outlined text-xl sm:text-2xl">login</span>
+            </div>
+            <h3 className="text-base sm:text-lg font-semibold text-slate-900 dark:text-slate-100 mb-2">Authentication</h3>
+            <p className="text-slate-600 dark:text-slate-400 text-sm">Secure login for patients and doctors</p>
+          </Link>
+          <Link href="/dashboard" className="bg-white dark:bg-slate-800 rounded-xl p-4 sm:p-6 shadow-sm border border-slate-100 dark:border-slate-700 hover:shadow-md transition-shadow min-h-[120px] sm:min-h-[140px]">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-green-500/10 text-green-500 flex items-center justify-center mb-4">
+              <span className="material-symbols-outlined text-xl sm:text-2xl">dashboard</span>
+            </div>
+            <h3 className="text-base sm:text-lg font-semibold text-slate-900 dark:text-slate-100 mb-2">Patient Dashboard</h3>
+            <p className="text-slate-600 dark:text-slate-400 text-sm">Overview of health metrics and appointments</p>
+          </Link>
+          <Link href="/diet-plan" className="bg-white dark:bg-slate-800 rounded-xl p-4 sm:p-6 shadow-sm border border-slate-100 dark:border-slate-700 hover:shadow-md transition-shadow min-h-[120px] sm:min-h-[140px]">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-orange-500/10 text-orange-500 flex items-center justify-center mb-4">
+              <span className="material-symbols-outlined text-xl sm:text-2xl">restaurant_menu</span>
+            </div>
+            <h3 className="text-base sm:text-lg font-semibold text-slate-900 dark:text-slate-100 mb-2">AI Diet Plan</h3>
+            <p className="text-slate-600 dark:text-slate-400 text-sm">Personalized meal recommendations</p>
+          </Link>
+        </div>
+        <div className="text-center mt-8 sm:mt-12 px-4">
+          <p className="text-slate-500 dark:text-slate-400">
+            More pages are being implemented. Check back soon for additional features.
+          </p>
         </div>
       </main>
     </div>

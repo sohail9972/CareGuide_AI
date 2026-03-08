@@ -2,9 +2,19 @@ import pytesseract
 from PIL import Image
 import os
 from pathlib import Path
+import numpy as np
+
+# try to import easyocr for better accuracy; optional dependency
+try:
+    import easyocr
+except ImportError:
+    easyocr = None
 
 # Set Tesseract path - update this if installed in a different location
 TESSERACT_PATH = r'C:\Program Files\Tessract_OCR\tesseract.exe'
+
+# Optionally override engine ("pytesseract", "easyocr", or "auto")
+OCR_ENGINE = os.getenv('OCR_ENGINE', 'auto').lower()
 
 def _configure_tesseract():
     """
@@ -97,6 +107,19 @@ def _preprocess_image(image: Image.Image) -> Image.Image:
     kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (2, 2))
     img_array = cv2.morphologyEx(img_array, cv2.MORPH_CLOSE, kernel)
     
+    # deskewing
+    coords = np.column_stack(np.where(img_array > 0))
+    if coords.size != 0:
+        angle = cv2.minAreaRect(coords)[-1]
+        if angle < -45:
+            angle = -(90 + angle)
+        else:
+            angle = -angle
+        (h, w) = img_array.shape
+        center = (w // 2, h // 2)
+        M = cv2.getRotationMatrix2D(center, angle, 1.0)
+        img_array = cv2.warpAffine(img_array, M, (w, h), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE)
+    
     # Convert back to PIL Image
     image = Image.fromarray(img_array)
     
@@ -125,7 +148,26 @@ def extract_text_from_image(image_path: str) -> str:
         image = Image.open(image_path)
         image = _preprocess_image(image)
         
-        # Extract text with Tesseract configuration
+        # Determine which engine to use
+        engine = OCR_ENGINE
+        if engine == 'auto':
+            # prefer easyocr when available
+            if easyocr is not None:
+                engine = 'easyocr'
+            else:
+                engine = 'pytesseract'
+
+        if engine == 'easyocr':
+            if easyocr is None:
+                raise Exception("EasyOCR selected but not installed")
+            reader = easyocr.Reader(['en'], gpu=False)
+            results = reader.readtext(np.array(image), detail=0)
+            if results:
+                return "\n".join(results)
+            # fallback to tesseract if easyocr returned nothing
+            engine = 'pytesseract'
+
+        # Use pytesseract
         config = '--oem 3 --psm 6'
         text = pytesseract.image_to_string(image, config=config)
         

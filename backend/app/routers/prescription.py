@@ -4,20 +4,32 @@ import os
 import tempfile
 from ..services.ocr_service import extract_text_from_image
 from ..services.nlp_service import extract_medicines
+from ..services.aws_service import analyze_prescription
+
 
 router = APIRouter()
 
 @router.post("/upload-prescription")
-async def upload_prescription(file: UploadFile = File(...)):
+async def upload_prescription(
+    file: UploadFile = File(...),
+    provider: str = "local",  # or "aws"
+    language: str = "en"
+):
     """
     Upload a prescription image and extract text and medicines.
-    
+
+    The `provider` parameter chooses the analysis backend:
+    - `local`: use Tesseract + spaCy (current implementation)
+    - `aws`: call Bedrock agent pipeline via AWS SDK
+
     Args:
         file: Image file to process
-        
+        provider: analysis provider
+        language: target language for guidance when using AWS
+
     Returns:
-        Dictionary with extracted_text and medicines_detected
-        
+        Dictionary with extracted_text or full guidance
+
     Raises:
         HTTPException: If file processing fails
     """
@@ -33,13 +45,17 @@ async def upload_prescription(file: UploadFile = File(...)):
             # Write uploaded file to temp location
             shutil.copyfileobj(file.file, temp_file)
         
-        # Extract text from image using OCR
+        # If the client requests AWS analysis, use that path
+        if provider == "aws":
+            result = analyze_prescription(temp_path, language)
+            return result
+
+        # Otherwise fall back to local OCR/NLP
         extracted_text = extract_text_from_image(temp_path)
         
         if not extracted_text or not extracted_text.strip():
             raise HTTPException(status_code=400, detail="Could not extract text from image")
         
-        # Extract medicines from extracted text
         medicines = extract_medicines(extracted_text)
         
         return {

@@ -4,8 +4,11 @@ CareGuide AI is an intelligent system that extracts text from prescription image
 
 ## Features
 
-- **OCR (Optical Character Recognition)**: Extracts text from prescription images using Tesseract
-- **Medicine Detection**: Identifies medicine names from extracted text using pattern matching and spacy NER
+- **OCR (Optical Character Recognition)**: Extracts text from prescription images using Tesseract or EasyOCR depending on configuration, or optionally by calling an Amazon Bedrock multimodal model when `provider=aws` is selected.
+  - You can force a specific engine by setting `OCR_ENGINE` environment variable (`pytesseract`, `easyocr`, or `auto`)
+  - Preprocessing pipeline includes denoising, contrast enhancement, CLAHE, deskewing, and morphological filtering
+  - EasyOCR often provides better results on messy handwritten prescriptions
+- **Medicine Detection**: Identifies medicine names from extracted text using pattern matching and spaCy NER locally, or utilises a Bedrock Agent connected to a medical Knowledge Base for AWS workflows
 - **Image Preprocessing**: Advanced image enhancement for better OCR accuracy
 - **FastAPI Backend**: RESTful API for prescription processing
 - **Modern Frontend**: Next.js-based user interface
@@ -134,3 +137,9 @@ MIT License - feel free to use this project for personal or educational purposes
 ## Support
 
 For issues, questions, or suggestions, please open an issue on GitHub.
+
+### Custom OCR Models
+If you have a specialized OCR model (for example, a trained Tesseract language pack or a deep
+learning model), you can integrate it by modifying `backend/app/services/ocr_service.py`.
+The code already supports an `OCR_ENGINE` environment variable and will use EasyOCR by default
+if available. Feel free to supply your model code here and I can help wire it in.

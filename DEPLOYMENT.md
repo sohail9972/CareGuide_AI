@@ -36,6 +36,19 @@ Both services will be available at the ports shown in VS Code.
    git clone https://github.com/sohail9972/CareGuide_AI.git
    cd CareGuide_AI
    ```
+   
+   # install backend dependencies (includes EasyOCR model)
+   cd backend
+   pip install -r requirements.txt
+   python -m spacy download en_core_web_sm
+   pip install opencv-python
+
+   # environment variable to control OCR engine:
+   #   OCR_ENGINE=pytesseract | easyocr | auto (default)
+   # easyocr tends to be more accurate on handwritten/messy text.
+
+   # Note: EasyOCR will be used automatically if installed; it often produces higher-quality text on handwritten/prescription images.
+
 
 2. **Run with Docker Compose:**
    ```bash
@@ -167,6 +180,34 @@ docker-compose up    # Start fresh
 ```
 
 ---
+
+## AWS Integration (optional)
+
+To run the new AWS‑native pipeline, perform the following additional steps:
+
+1. **Create and configure Bedrock resources**
+   * Build a Bedrock Agent that accepts an S3 URI, runs the multimodal vision model (`anthropic.claude-3.5-sonnet`), performs RAG lookups against a Knowledge Base, and translates the results. Store the agent ID in an environment variable `BEDROCK_AGENT_ID`.
+   * Populate a Knowledge Base with medicine information (download RxNorm/OpenFDA datasets and ingest via the Bedrock console or API).
+
+2. **Provision AWS infrastructure**
+   * Create an Amazon S3 bucket for prescription images (`S3_BUCKET`).
+   * Deploy a Lambda function (see `specs/design.md`) that triggers on object creation and invokes the Bedrock agent using the AWS SDK.
+   * Ensure your Lambda role has `bedrock:InvokeModel`, `s3:GetObject`, `s3:PutObject`, and optional DynamoDB or SQS permissions if you store results.
+
+3. **Set environment variables** for the backend service, either in `.env` or the deployment platform:
+   ```bash
+   AWS_REGION=us-east-1
+   S3_BUCKET=your-bucket-name
+   BEDROCK_MODEL=anthropic.claude-3.5-sonnet
+   BEDROCK_AGENT_ID=your-agent-id
+   ```
+
+4. **Use the AWS provider** in your API calls:
+   ```bash
+   curl -F "file=@prescription.jpg" "http://localhost:8000/upload-prescription?provider=aws&language=hi"
+   ```
+
+5. **Monitor & logs**: View Lambda logs in CloudWatch and Bedrock call details in AWS Console.
 
 ## Getting Help
 

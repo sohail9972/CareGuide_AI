@@ -5,3 +5,7 @@ pytesseract==0.3.10
 Pillow==10.1.0
 spacy==3.7.2
 python-multipart==0.0.6
+easyocr==1.6.2
+boto3==1.30.0
+awscli==1.29.0
+
